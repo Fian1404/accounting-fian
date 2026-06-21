@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dompetku - Catatan Keuangan</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --success: #10b981;
+            --danger: #ef4444;
+            --bg: #f3f4f6;
+            --surface: #ffffff;
+            --text-main: #1f2937;
+            --text-muted: #6b7280;
+            --nav-height: 70px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text-main);
+            display: flex;
+            justify-content: center;
+        }
+
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            background: var(--bg);
+            min-height: 100vh;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            padding-bottom: calc(var(--nav-height) + 20px);
+        }
+
+        /* Tampilan Utama & Laporan (Toggle) */
+        .view-section {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+        .view-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Header & Saldo */
+        .header {
+            background: linear-gradient(135deg, var(--primary), #818cf8);
+            padding: 30px 20px 50px 20px;
+            color: white;
+            border-bottom-left-radius: 30px;
+            border-bottom-right-radius: 30px;
+            text-align: center;
+        }
+
+        .header h1 { font-size: 1.2rem; font-weight: 500; margin-bottom: 20px; opacity: 0.9; }
+        .balance-label { font-size: 0.9rem; opacity: 0.8; }
+        .balance-amount { font-size: 2.5rem; font-weight: bold; margin: 5px 0 20px 0; letter-spacing: 1px; }
+
+        .summary-cards {
+            display: flex;
+            gap: 15px;
+            padding: 0 20px;
+            margin-top: -30px;
+        }
+
+        .card {
+            flex: 1;
+            background: var(--surface);
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .card p { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 5px; }
+        .card h3 { font-size: 1.1rem; }
+        .text-green { color: var(--success); }
+        .text-red { color: var(--danger); }
+
+        /* Daftar Transaksi */
+        .section-title { padding: 25px 20px 10px 20px; font-size: 1.2rem; color: var(--text-main); }
+        .transactions { padding: 0 20px; }
+        
+        .list-item {
+            background: var(--surface);
+            padding: 15px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+
+        .item-info { display: flex; align-items: center; gap: 15px; }
+        .item-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            background: var(--bg);
+        }
+        
+        .item-details h4 { font-size: 1rem; color: var(--text-main); margin-bottom: 3px; }
+        .item-details p { font-size: 0.75rem; color: var(--text-muted); }
+        .item-amount { text-align: right; }
+        .item-amount span { display: block; font-weight: bold; font-size: 1rem; }
+        .delete-btn { font-size: 0.75rem; color: var(--danger); cursor: pointer; border: none; background: none; margin-top: 5px; }
+
+        /* Navigasi Bawah */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 480px;
+            height: var(--nav-height);
+            background: var(--surface);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            box-shadow: 0 -4px 10px rgba(0,0,0,0.05);
+            border-top-left-radius: 20px;
+            border-top-right-radius: 20px;
+            z-index: 90;
+        }
+
+        .nav-item {
+            flex: 1;
+            text-align: center;
+            color: var(--text-muted);
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            transition: 0.3s;
+        }
+
+        .nav-item.active { color: var(--primary); font-weight: bold; }
+        .nav-icon { font-size: 1.5rem; }
+
+        /* Tombol Mengapung (FAB) */
+        .fab {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 55px;
+            height: 55px;
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            border: none;
+            font-size: 2rem;
+            box-shadow: 0 4px 10px rgba(79, 70, 229, 0.4);
+            cursor: pointer;
+            transition: 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+        .fab:hover { background: var(--primary-hover); transform: translateX(-50%) scale(1.05); }
+
+        /* Menu Laporan */
+        .report-header { padding: 20px; background: var(--surface); border-bottom-left-radius: 20px; border-bottom-right-radius: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+        .filter-group { display: flex; gap: 10px; margin-top: 15px; }
+        .filter-group select, .filter-group input { flex: 1; padding: 10px; border: 1px solid #e5e7eb; border-radius: 8px; outline: none; }
+        
+        .report-summary { padding: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        
+        .category-bars { padding: 0 20px; }
+        .cat-bar-item { margin-bottom: 15px; }
+        .cat-bar-header { display: flex; justify-content: space-between; font-size: 0.85rem; margin-bottom: 5px; }
+        .cat-bar-bg { width: 100%; height: 8px; background: #e5e7eb; border-radius: 4px; overflow: hidden; }
+        .cat-bar-fill { height: 100%; background: var(--danger); border-radius: 4px; transition: width 0.5s ease; }
+
+        /* Modal Form */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(3px);
+            display: flex; align-items: flex-end; justify-content: center;
+            opacity: 0; visibility: hidden; transition: 0.3s; z-index: 1000;
+        }
+        .modal-overlay.active { opacity: 1; visibility: visible; }
+        .modal-content {
+            background: var(--surface); width: 100%; max-width: 480px;
+            padding: 25px; border-top-left-radius: 25px; border-top-right-radius: 25px;
+            transform: translateY(100%); transition: 0.3s;
+        }
+        .modal-overlay.active .modal-content { transform: translateY(0); }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .close-btn { background: none; border: none; font-size: 1.5rem; color: var(--text-muted); cursor: pointer; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 5px; }
+        .form-group input, .form-group select { width: 100%; padding: 12px; border: 1px solid #e5e7eb; border-radius: 10px; font-size: 1rem; outline: none; }
+        .btn-submit { width: 100%; padding: 15px; background: var(--primary); color: white; border: none; border-radius: 10px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 10px; }
+
+        @media (min-width: 481px) {
+            .app-container { border-radius: 20px; margin: 20px 0; overflow: hidden; }
+            .bottom-nav { position: absolute; }
+            .modal-overlay { position: absolute; border-radius: 20px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+
+    <div id="homeView" class="view-section active">
+        <div class="header">
+            <h1>Dompetku</h1>
+            <p class="balance-label">Total Saldo Aktif</p>
+            <h2 class="balance-amount" id="totalBalance">Rp 0</h2>
+        </div>
+
+        <div class="summary-cards">
+            <div class="card">
+                <p>Pemasukan</p>
+                <h3 class="text-green" id="totalIncome">Rp 0</h3>
+            </div>
+            <div class="card">
+                <p>Pengeluaran</p>
+                <h3 class="text-red" id="totalExpense">Rp 0</h3>
+            </div>
+        </div>
+
+        <h2 class="section-title">Riwayat Terakhir</h2>
+        <div class="transactions" id="transactionList">
+            </div>
+    </div>
+
+    <div id="reportView" class="view-section">
+        <div class="report-header">
+            <h2 style="color: var(--primary); text-align: center;">Laporan Keuangan</h2>
+            <div class="filter-group">
+                <select id="filterType" onchange="toggleFilterInput()">
+                    <option value="month">Per Bulan</option>
+                    <option value="year">Per Tahun</option>
+                </select>
+                <input type="month" id="filterMonth" onchange="generateReport()">
+                <select id="filterYear" style="display: none;" onchange="generateReport()">
+                    </select>
+            </div>
+        </div>
+
+        <div class="report-summary">
+            <div class="card">
+                <p>Total Pemasukan</p>
+                <h3 class="text-green" id="repIncome">Rp 0</h3>
+            </div>
+            <div class="card">
+                <p>Total Pengeluaran</p>
+                <h3 class="text-red" id="repExpense">Rp 0</h3>
+            </div>
+            <div class="card" style="grid-column: span 2; background: var(--bg);">
+                <p>Selisih / Bersih</p>
+                <h3 id="repNet" style="color: var(--primary);">Rp 0</h3>
+            </div>
+        </div>
+
+        <h2 class="section-title" style="padding-top: 0;">Pengeluaran Berdasarkan Kategori</h2>
+        <div class="category-bars" id="categoryReport">
+            </div>
+    </div>
+
+    <div class="bottom-nav">
+        <button class="nav-item active" onclick="switchView('home')" id="btnHome">
+            <span class="nav-icon">🏠</span>
+            Beranda
+        </button>
+        <button class="fab" id="fabBtn" onclick="toggleModal()">+</button>
+        
+        <button class="nav-item" onclick="switchView('report')" id="btnReport">
+            <span class="nav-icon">📊</span>
+            Laporan
+        </button>
+    </div>
+
+    <div class="modal-overlay" id="modalOverlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Catat Transaksi</h2>
+                <button class="close-btn" onclick="toggleModal()">&times;</button>
+            </div>
+            <form id="transactionForm">
+                <div class="form-group">
+                    <label>Jenis Transaksi</label>
+                    <select id="type" required onchange="updateCategories()">
+                        <option value="Keluar">Pengeluaran (-)</option>
+                        <option value="Masuk">Pemasukan (+)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Kategori</label>
+                    <select id="category" required></select>
+                </div>
+                <div class="form-group">
+                    <label>Keterangan Lengkap</label>
+                    <input type="text" id="desc" placeholder="Contoh: Beli kuota internet" required>
+                </div>
+                <div class="form-group">
+                    <label>Nominal (Rp)</label>
+                    <input type="number" id="amount" placeholder="Contoh: 50000" required min="0">
+                </div>
+                <div class="form-group">
+                    <label>Tanggal</label>
+                    <input type="date" id="date" required>
+                </div>
+                <button type="submit" class="btn-submit">Simpan Transaksi</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    let transactions = JSON.parse(localStorage.getItem('dompetku_data')) || [];
+
+    const categories = {
+        Masuk: [
+            { icon: '💰', name: 'Gaji' }, { icon: '📈', name: 'Investasi' }, { icon: '🎁', name: 'Lain-lain' }
+        ],
+        Keluar: [
+            { icon: '🍔', name: 'Makanan & Minuman' }, { icon: '🚗', name: 'Transportasi' },
+            { icon: '💡', name: 'Tagihan & Cicilan' }, { icon: '🎮', name: 'Hiburan' },
+            { icon: '🛒', name: 'Belanja' }, { icon: '💸', name: 'Lain-lain' }
+        ]
+    };
+
+    const formatRupiah = (num) => new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(num);
+
+    // Setup Awal Input Filter
+    document.getElementById('date').valueAsDate = new Date();
+    
+    // Set default filter ke bulan ini (Format YYYY-MM)
+    const now = new Date();
+    const currentMonth = now.toISOString().slice(0, 7); 
+    document.getElementById('filterMonth').value = currentMonth;
+
+    // Set daftar tahun untuk filter tahunan (10 tahun terakhir)
+    const yearSelect = document.getElementById('filterYear');
+    const currentYear = now.getFullYear();
+    for(let i = 0; i < 10; i++) {
+        yearSelect.innerHTML += `<option value="${currentYear - i}">${currentYear - i}</option>`;
+    }
+
+    function updateCategories() {
+        const type = document.getElementById('type').value;
+        const categorySelect = document.getElementById('category');
+        categorySelect.innerHTML = '';
+        categories[type].forEach(cat => {
+            categorySelect.innerHTML += `<option value="${cat.name}">${cat.icon} ${cat.name}</option>`;
+        });
+    }
+    updateCategories();
+
+    // Logika Berpindah Tab
+    function switchView(view) {
+        document.getElementById('homeView').classList.remove('active');
+        document.getElementById('reportView').classList.remove('active');
+        document.getElementById('btnHome').classList.remove('active');
+        document.getElementById('btnReport').classList.remove('active');
+
+        if(view === 'home') {
+            document.getElementById('homeView').classList.add('active');
+            document.getElementById('btnHome').classList.add('active');
+            document.getElementById('fabBtn').style.display = 'flex';
+            updateUI();
+        } else {
+            document.getElementById('reportView').classList.add('active');
+            document.getElementById('btnReport').classList.add('active');
+            document.getElementById('fabBtn').style.display = 'none'; // Sembunyikan tombol + di laporan
+            generateReport();
+        }
+    }
+
+    function toggleModal() {
+        document.getElementById('modalOverlay').classList.toggle('active');
+    }
+    document.getElementById('modalOverlay').addEventListener('click', function(e) {
+        if (e.target === this) toggleModal();
+    });
+
+    // Toggle Input Filter (Bulan vs Tahun)
+    function toggleFilterInput() {
+        const type = document.getElementById('filterType').value;
+        if(type === 'month') {
+            document.getElementById('filterMonth').style.display = 'block';
+            document.getElementById('filterYear').style.display = 'none';
+        } else {
+            document.getElementById('filterMonth').style.display = 'none';
+            document.getElementById('filterYear').style.display = 'block';
+        }
+        generateReport();
+    }
+
+    // UPDATE BERANDA
+    function updateUI() {
+        const list = document.getElementById('transactionList');
+        list.innerHTML = '';
+        let income = 0, expense = 0;
+
+        if (transactions.length === 0) {
+            list.innerHTML = '<p style="text-align:center; color:#9ca3af; margin-top:20px;">Belum ada catatan transaksi.</p>';
+        }
+
+        [...transactions].reverse().forEach((t, index) => {
+            const actualIndex = transactions.length - 1 - index;
+            if (t.type === 'Masuk') income += t.amount; else expense += t.amount;
+
+            const typeCats = categories[t.type];
+            const catObj = typeCats.find(c => c.name === t.category);
+            const icon = catObj ? catObj.icon : '📌';
+            const colorClass = t.type === 'Masuk' ? 'text-green' : 'text-red';
+            const sign = t.type === 'Masuk' ? '+' : '-';
+
+            list.innerHTML += `
+                <div class="list-item">
+                    <div class="item-info">
+                        <div class="item-icon">${icon}</div>
+                        <div class="item-details">
+                            <h4>${t.category}</h4><p>${t.date} • ${t.desc}</p>
+                        </div>
+                    </div>
+                    <div class="item-amount">
+                        <span class="${colorClass}">${sign} ${formatRupiah(t.amount)}</span>
+                        <button class="delete-btn" onclick="deleteTransaction(${actualIndex})">Hapus</button>
+                    </div>
+                </div>
+            `;
+        });
+
+        document.getElementById('totalIncome').innerText = formatRupiah(income);
+        document.getElementById('totalExpense').innerText = formatRupiah(expense);
+        document.getElementById('totalBalance').innerText = formatRupiah(income - expense);
+        localStorage.setItem('dompetku_data', JSON.stringify(transactions));
+    }
+
+    // UPDATE LAPORAN (REPORT GENERATOR)
+    function generateReport() {
+        const filterType = document.getElementById('filterType').value;
+        const filterMonth = document.getElementById('filterMonth').value; // YYYY-MM
+        const filterYear = document.getElementById('filterYear').value;   // YYYY
+
+        let repIncome = 0;
+        let repExpense = 0;
+        let categoryTotals = {};
+
+        // Proses Filter Data
+        const filteredData = transactions.filter(t => {
+            if(filterType === 'month') {
+                return t.date.startsWith(filterMonth);
+            } else {
+                return t.date.startsWith(filterYear);
+            }
+        });
+
+        // Hitung Total dan Kelompokkan Kategori Pengeluaran
+        filteredData.forEach(t => {
+            if(t.type === 'Masuk') {
+                repIncome += t.amount;
+            } else {
+                repExpense += t.amount;
+                // Tambahkan ke total kategori
+                if(!categoryTotals[t.category]) {
+                    categoryTotals[t.category] = 0;
+                }
+                categoryTotals[t.category] += t.amount;
+            }
+        });
+
+        // Update Kartu Ringkasan Laporan
+        document.getElementById('repIncome').innerText = formatRupiah(repIncome);
+        document.getElementById('repExpense').innerText = formatRupiah(repExpense);
+        document.getElementById('repNet').innerText = formatRupiah(repIncome - repExpense);
+
+        // Update Grafik Bar Kategori
+        const catContainer = document.getElementById('categoryReport');
+        catContainer.innerHTML = '';
+
+        if(Object.keys(categoryTotals).length === 0) {
+            catContainer.innerHTML = '<p style="text-align:center; color:#9ca3af;">Tidak ada pengeluaran di periode ini.</p>';
+            return;
+        }
+
+        // Urutkan dari pengeluaran terbesar
+        const sortedCategories = Object.entries(categoryTotals).sort((a, b) => b[1] - a[1]);
+
+        sortedCategories.forEach(([catName, amount]) => {
+            const percentage = Math.round((amount / repExpense) * 100);
+            catContainer.innerHTML += `
+                <div class="cat-bar-item">
+                    <div class="cat-bar-header">
+                        <span>${catName}</span>
+                        <span>${formatRupiah(amount)} (${percentage}%)</span>
+                    </div>
+                    <div class="cat-bar-bg">
+                        <div class="cat-bar-fill" style="width: ${percentage}%"></div>
+                    </div>
+                </div>
+            `;
+        });
+    }
+
+    // Eksekusi Form Tambah Data
+    document.getElementById('transactionForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        const newTransaction = {
+            id: Date.now(),
+            type: document.getElementById('type').value,
+            category: document.getElementById('category').value,
+            desc: document.getElementById('desc').value,
+            amount: parseInt(document.getElementById('amount').value),
+            date: document.getElementById('date').value
+        };
+
+        transactions.push(newTransaction);
+        updateUI();
+        if(document.getElementById('reportView').classList.contains('active')) {
+            generateReport(); // Update laporan jika sedang dibuka
+        }
+        toggleModal();
+        document.getElementById('desc').value = '';
+        document.getElementById('amount').value = '';
+    });
+
+    function deleteTransaction(index) {
+        if(confirm("Hapus catatan ini?")) {
+            transactions.splice(index, 1);
+            updateUI();
+        }
+    }
+
+    updateUI();
+</script>
+
+</body>
+</html>
